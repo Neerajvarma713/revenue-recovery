@@ -8,8 +8,6 @@ import {
   ScrollText,
   Settings,
 } from "lucide-react";
-import { useEffect } from "react";
-import { api } from "../services/api";
 
 const nav = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
@@ -21,21 +19,6 @@ const nav = [
 ];
 
 export default function Layout() {
-  useEffect(() => {
-    const token = localStorage.getItem("rr_token");
-
-    if (!token) {
-      api
-        .demo("analyst@demo.local")
-        .then((response) => {
-          localStorage.setItem("rr_token", response.token);
-        })
-        .catch((error) => {
-          console.error("Demo login failed:", error);
-        });
-    }
-  }, []);
-
   return (
     <div className="min-h-screen flex paper">
       {/* Sidebar */}
