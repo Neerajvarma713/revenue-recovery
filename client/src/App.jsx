@@ -18,7 +18,11 @@ import Audit from "./pages/Audit";
 function ProtectedRoute() {
   const token = localStorage.getItem("rr_token");
 
-  return token ? <Layout /> : <Navigate to="/login" replace />;
+  return token ? (
+    <Layout />
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
 
 export default function App() {
@@ -26,20 +30,46 @@ export default function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Public route */}
-        <Route path="/login" element={<Login />} />
+        {/* Login */}
+        <Route
+          path="/login"
+          element={<Login />}
+        />
 
-        {/* Protected routes */}
+        {/* Protected application */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/interventions" element={<Interventions />} />
-          <Route path="/simulator" element={<Simulator />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/audit" element={<Audit />} />
+          <Route
+            path="/"
+            element={<Dashboard />}
+          />
+
+          <Route
+            path="/customers"
+            element={<Customers />}
+          />
+
+          <Route
+            path="/interventions"
+            element={<Interventions />}
+          />
+
+          <Route
+            path="/simulator"
+            element={<Simulator />}
+          />
+
+          <Route
+            path="/analytics"
+            element={<Analytics />}
+          />
+
+          <Route
+            path="/audit"
+            element={<Audit />}
+          />
         </Route>
 
-        {/* Unknown routes */}
+        {/* Invalid URL */}
         <Route
           path="*"
           element={<Navigate to="/" replace />}

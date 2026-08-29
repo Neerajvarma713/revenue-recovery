@@ -1,17 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../services/api";
 
 export default function Simulator() {
+  const [customers, setCustomers] = useState([]);
   const [customerId, setCustomerId] = useState("");
+
   const [cost, setCost] = useState(50);
   const [retention, setRetention] = useState(20);
+
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    async function loadCustomers() {
+      try {
+        const data = await api.customers("");
+        setCustomers(data);
+
+        if (data.length > 0) {
+          setCustomerId(data[0]._id);
+        }
+      } catch (err) {
+        console.error("Failed to load customers:", err);
+        setError("Unable to load customers.");
+      } finally {
+        setLoadingCustomers(false);
+      }
+    }
+
+    loadCustomers();
+  }, []);
+
   const runSimulation = async () => {
-    if (!customerId.trim()) {
-      setError("Please enter a customer ID.");
+    if (!customerId) {
+      setError("Please select a customer.");
       return;
     }
 
@@ -20,7 +44,7 @@ export default function Simulator() {
     setResult(null);
 
     try {
-      const response = await api.simulate(customerId.trim(), {
+      const response = await api.simulate(customerId, {
         cost,
         retention: retention / 100,
       });
@@ -53,16 +77,34 @@ export default function Simulator() {
 
       {/* Simulator */}
       <div className="max-w-2xl bg-white/50 border line p-7 space-y-5">
-        {/* Customer ID */}
-        <label className="block text-sm">
-          Customer ID
 
-          <input
+        {/* Customer */}
+        <label className="block text-sm">
+          Customer
+
+          <select
             value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
+            onChange={(e) => {
+              setCustomerId(e.target.value);
+              setResult(null);
+              setError("");
+            }}
+            disabled={loadingCustomers}
             className="block w-full border line bg-white px-3 py-2 mt-2 outline-none"
-            placeholder="MongoDB customer id"
-          />
+          >
+            {loadingCustomers ? (
+              <option>Loading customers...</option>
+            ) : (
+              customers.map((customer) => (
+                <option
+                  key={customer._id}
+                  value={customer._id}
+                >
+                  {customer.name} — {customer.externalId}
+                </option>
+              ))
+            )}
+          </select>
         </label>
 
         {/* Cost */}
@@ -103,15 +145,16 @@ export default function Simulator() {
         {/* Run */}
         <button
           onClick={runSimulation}
-          disabled={loading}
+          disabled={loading || loadingCustomers || !customerId}
           className="bg-[#193532] text-[#f1eee6] px-5 py-3 text-sm disabled:opacity-50"
         >
-          {loading ? "Running…" : "Run simulation"}
+          {loading ? "Running..." : "Run simulation"}
         </button>
 
         {/* Result */}
         {result && (
           <div className="border-t line pt-5 grid grid-cols-2 gap-4">
+
             <div>
               <div className="mono text-[9px] muted">
                 EXPECTED REVENUE
@@ -131,6 +174,7 @@ export default function Simulator() {
                 ${Number(result.netValue || 0).toFixed(0)}
               </div>
             </div>
+
           </div>
         )}
       </div>
