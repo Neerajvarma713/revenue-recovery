@@ -18,10 +18,16 @@ import Audit from "./pages/Audit";
 function ProtectedRoute() {
   const token = localStorage.getItem("rr_token");
 
+  return token ? <Layout /> : <Navigate to="/login" replace />;
+}
+
+function PublicRoute() {
+  const token = localStorage.getItem("rr_token");
+
   return token ? (
-    <Layout />
+    <Navigate to="/" replace />
   ) : (
-    <Navigate to="/login" replace />
+    <Login />
   );
 }
 
@@ -30,46 +36,38 @@ export default function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Login */}
+        {/* Public */}
         <Route
           path="/login"
-          element={<Login />}
+          element={<PublicRoute />}
         />
 
-        {/* Protected application */}
+        {/* Protected */}
         <Route element={<ProtectedRoute />}>
+          <Route index element={<Dashboard />} />
           <Route
-            path="/"
-            element={<Dashboard />}
-          />
-
-          <Route
-            path="/customers"
+            path="customers"
             element={<Customers />}
           />
-
           <Route
-            path="/interventions"
+            path="interventions"
             element={<Interventions />}
           />
-
           <Route
-            path="/simulator"
+            path="simulator"
             element={<Simulator />}
           />
-
           <Route
-            path="/analytics"
+            path="analytics"
             element={<Analytics />}
           />
-
           <Route
-            path="/audit"
+            path="audit"
             element={<Audit />}
           />
         </Route>
 
-        {/* Invalid URL */}
+        {/* Fallback */}
         <Route
           path="*"
           element={<Navigate to="/" replace />}

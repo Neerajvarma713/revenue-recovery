@@ -14,8 +14,15 @@ import {
 import { predict } from "../services/ml.js";
 
 
-// Find customer using either MongoDB _id or externalId
+// --------------------------------------------------
+// Find customer by externalId OR MongoDB _id
+// --------------------------------------------------
+
 async function findCustomer(id) {
+  if (!id) return null;
+
+  // Most of your UI uses externalId such as:
+  // Customer 02297
   const byExternalId = await Customer.findOne({
     externalId: id,
   });
@@ -24,7 +31,7 @@ async function findCustomer(id) {
     return byExternalId;
   }
 
-  // Only try _id if it looks like a valid MongoDB ObjectId
+  // Only query MongoDB _id when it is valid
   if (/^[0-9a-fA-F]{24}$/.test(id)) {
     return Customer.findById(id);
   }
@@ -33,77 +40,132 @@ async function findCustomer(id) {
 }
 
 
+// --------------------------------------------------
 // Dashboard
+// --------------------------------------------------
+
 export async function dashboard(req, res) {
-  const customers = await Customer.find();
+  try {
+    const customers = await Customer.find()
+      .select(
+        "externalId name planType monthlyRevenue churnProbability riskLevel"
+      )
+      .lean();
 
-  const totalChurn = customers.reduce(
-    (sum, customer) => sum + (customer.churnProbability || 0),
-    0
-  );
+    let totalChurn = 0;
+    let totalRevenueRisk = 0;
+    let highRisk = 0;
 
-  const revenueRisk = customers.map((customer) =>
-    revenueAtRisk(customer)
-  );
+    const riskCounts = {
+      LOW: 0,
+      MEDIUM: 0,
+      HIGH: 0,
+      CRITICAL: 0,
+    };
 
-  res.json({
-    kpis: {
-      customers: customers.length,
+    for (const customer of customers) {
+      totalChurn += customer.churnProbability || 0;
 
-      atRisk: revenueRisk.reduce(
-        (sum, value) => sum + value,
-        0
-      ),
+      totalRevenueRisk += revenueAtRisk(customer);
 
-      highRisk: customers.filter((customer) =>
-        ["HIGH", "CRITICAL"].includes(customer.riskLevel)
-      ).length,
-
-      avgChurn: customers.length
-        ? totalChurn / customers.length
-        : 0,
-    },
-
-    riskDistribution: [
-      "LOW",
-      "MEDIUM",
-      "HIGH",
-      "CRITICAL",
-    ].map((level) => ({
-      level,
-
-      count: customers.filter(
-        (customer) => customer.riskLevel === level
-      ).length,
-    })),
-
-    customers: customers.slice(0, 8),
-  });
-}
-
-
-// Get customers
-export async function customers(req, res) {
-  const q = req.query.q || "";
-
-  const filter = q
-    ? {
-        name: {
-          $regex: q,
-          $options: "i",
-        },
+      if (
+        customer.riskLevel === "HIGH" ||
+        customer.riskLevel === "CRITICAL"
+      ) {
+        highRisk++;
       }
-    : {};
 
-  const result = await Customer.find(filter).sort({
-    churnProbability: -1,
-  });
+      if (riskCounts[customer.riskLevel] !== undefined) {
+        riskCounts[customer.riskLevel]++;
+      }
+    }
 
-  res.json(result);
+    res.json({
+      kpis: {
+        customers: customers.length,
+
+        atRisk: totalRevenueRisk,
+
+        highRisk,
+
+        avgChurn: customers.length
+          ? totalChurn / customers.length
+          : 0,
+      },
+
+      riskDistribution: [
+        {
+          level: "LOW",
+          count: riskCounts.LOW,
+        },
+        {
+          level: "MEDIUM",
+          count: riskCounts.MEDIUM,
+        },
+        {
+          level: "HIGH",
+          count: riskCounts.HIGH,
+        },
+        {
+          level: "CRITICAL",
+          count: riskCounts.CRITICAL,
+        },
+      ],
+
+      customers: customers.slice(0, 8),
+    });
+  } catch (error) {
+    console.error("Dashboard failed:", error);
+
+    res.status(500).json({
+      error: "Failed to load dashboard",
+    });
+  }
 }
 
 
-// Create new customer
+// --------------------------------------------------
+// Get customers
+// --------------------------------------------------
+
+export async function customers(req, res) {
+  try {
+    const q = req.query.q?.trim() || "";
+
+    const filter = q
+      ? {
+          name: {
+            $regex: q,
+            $options: "i",
+          },
+        }
+      : {};
+
+    const result = await Customer.find(filter)
+      .select(
+        "externalId name planType monthlyRevenue churnProbability riskLevel"
+      )
+      .sort({
+        churnProbability: -1,
+      })
+      .limit(100)
+      .lean();
+
+    res.json(result);
+  } catch (error) {
+    console.error("Customers request failed:", error);
+
+    res.status(500).json({
+      error: "Failed to load customers",
+    });
+  }
+}
+
+
+// --------------------------------------------------
+// Create customer
+// --------------------------------------------------
+
 export async function createCustomer(req, res) {
   try {
     const {
@@ -120,16 +182,19 @@ export async function createCustomer(req, res) {
       discountPct,
     } = req.body;
 
-    // Required fields
-    if (!externalId || !name) {
+    const cleanExternalId = externalId?.trim();
+    const cleanName = name?.trim();
+
+    // Validate
+    if (!cleanExternalId || !cleanName) {
       return res.status(400).json({
         error: "externalId and name are required",
       });
     }
 
-    // Check for duplicate external ID
-    const existing = await Customer.findOne({
-      externalId,
+    // Check duplicate
+    const existing = await Customer.exists({
+      externalId: cleanExternalId,
     });
 
     if (existing) {
@@ -138,15 +203,15 @@ export async function createCustomer(req, res) {
       });
     }
 
+    // Create customer
     const customer = await Customer.create({
-      externalId,
-      name,
+      externalId: cleanExternalId,
+
+      name: cleanName,
 
       tenureMonths: Number(tenureMonths || 0),
 
-      monthlyRevenue: Number(
-        monthlyRevenue || 0
-      ),
+      monthlyRevenue: Number(monthlyRevenue || 0),
 
       supportTickets90d: Number(
         supportTickets90d || 0
@@ -172,13 +237,17 @@ export async function createCustomer(req, res) {
         discountPct || 0
       ),
 
-      // Initial values before ML scoring
       churnProbability: 0,
+
       riskLevel: "LOW",
     });
 
-    // Add audit log
-    await AuditLog.create({
+    // Respond immediately.
+    // Audit logging happens after the response.
+    res.status(201).json(customer);
+
+    // Do not make the user wait for this.
+    AuditLog.create({
       actor: req.user?.email || "system",
 
       action: "CREATE_CUSTOMER",
@@ -191,15 +260,24 @@ export async function createCustomer(req, res) {
         externalId: customer.externalId,
         name: customer.name,
       },
+    }).catch((error) => {
+      console.error(
+        "Customer audit log failed:",
+        error
+      );
     });
-
-    res.status(201).json(customer);
 
   } catch (error) {
     console.error(
       "Create customer failed:",
       error
     );
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "Customer with this externalId already exists",
+      });
+    }
 
     res.status(500).json({
       error: "Failed to create customer",
@@ -208,200 +286,373 @@ export async function createCustomer(req, res) {
 }
 
 
+// --------------------------------------------------
 // Get single customer
+// --------------------------------------------------
+
 export async function customer(req, res) {
-  const customer = await findCustomer(
-    req.params.id
-  );
-
-  if (!customer) {
-    return res.status(404).json({
-      error: "Customer not found",
-    });
-  }
-
-  res.json({
-    ...customer.toObject(),
-
-    revenueAtRisk: revenueAtRisk(customer),
-
-    signals: explain(customer),
-  });
-}
-
-
-// Score customer
-export async function score(req, res) {
-  const customer = await findCustomer(
-    req.params.id
-  );
-
-  if (!customer) {
-    return res.status(404).json({
-      error: "Customer not found",
-    });
-  }
-
-  const prediction = await predict(customer);
-
-  customer.churnProbability =
-    prediction.churn_probability;
-
-  customer.riskLevel =
-    prediction.risk_level;
-
-  await customer.save();
-
-  await AuditLog.create({
-    actor: req.user?.email || "system",
-
-    action: "SCORE_CUSTOMER",
-
-    entityType: "Customer",
-
-    entityId: customer.id,
-
-    metadata: prediction,
-  });
-
-  res.json(prediction);
-}
-
-
-// Interventions
-export async function interventions(req, res) {
-  const result = await Intervention.find()
-    .populate("customer")
-    .sort({ createdAt: -1 });
-
-  res.json(result);
-}
-
-
-// Recommend interventions
-export async function recommend(req, res) {
-  const customer = await findCustomer(
-    req.params.id
-  );
-
-  if (!customer) {
-    return res.status(404).json({
-      error: "Customer not found",
-    });
-  }
-
-  const rows = strategies(customer)
-    .filter((item) => item.netValue > 0)
-    .sort(
-      (a, b) => b.netValue - a.netValue
+  try {
+    const customer = await findCustomer(
+      req.params.id
     );
 
-  const created = await Intervention.insertMany(
-    rows.map((item) => ({
-      ...item,
+    if (!customer) {
+      return res.status(404).json({
+        error: "Customer not found",
+      });
+    }
 
-      customer: customer._id,
+    res.json({
+      ...customer.toObject(),
 
-      reason: explain(customer).join(", "),
-    }))
-  );
+      revenueAtRisk:
+        revenueAtRisk(customer),
 
-  res.json(created);
-}
+      signals: explain(customer),
+    });
+  } catch (error) {
+    console.error(
+      "Customer request failed:",
+      error
+    );
 
-
-// Simulator
-export async function simulator(req, res) {
-  const customer = await findCustomer(
-    req.params.id
-  );
-
-  if (!customer) {
-    return res.status(404).json({
-      error: "Customer not found",
+    res.status(500).json({
+      error: "Failed to load customer",
     });
   }
+}
 
-  const cost = Number(
-    req.body.cost || 0
-  );
 
-  const retention = Number(
-    req.body.retention || 0
-  );
+// --------------------------------------------------
+// Score customer
+// --------------------------------------------------
 
-  res.json({
-    cost,
+export async function score(req, res) {
+  try {
+    const customer = await findCustomer(
+      req.params.id
+    );
 
-    retention,
+    if (!customer) {
+      return res.status(404).json({
+        error: "Customer not found",
+      });
+    }
 
-    expectedRevenue:
+    const prediction =
+      await predict(customer);
+
+    customer.churnProbability =
+      prediction.churn_probability;
+
+    customer.riskLevel =
+      prediction.risk_level;
+
+    await customer.save();
+
+    AuditLog.create({
+      actor:
+        req.user?.email || "system",
+
+      action: "SCORE_CUSTOMER",
+
+      entityType: "Customer",
+
+      entityId: customer.id,
+
+      metadata: prediction,
+    }).catch((error) => {
+      console.error(
+        "Score audit failed:",
+        error
+      );
+    });
+
+    res.json(prediction);
+  } catch (error) {
+    console.error(
+      "Score customer failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Failed to score customer",
+    });
+  }
+}
+
+
+// --------------------------------------------------
+// Interventions
+// --------------------------------------------------
+
+export async function interventions(req, res) {
+  try {
+    const result = await Intervention.find()
+      .populate("customer")
+      .sort({
+        createdAt: -1,
+      })
+      .limit(100)
+      .lean();
+
+    res.json(result);
+  } catch (error) {
+    console.error(
+      "Interventions failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Failed to load interventions",
+    });
+  }
+}
+
+
+// --------------------------------------------------
+// Recommend interventions
+// --------------------------------------------------
+
+export async function recommend(req, res) {
+  try {
+    const customer = await findCustomer(
+      req.params.id
+    );
+
+    if (!customer) {
+      return res.status(404).json({
+        error: "Customer not found",
+      });
+    }
+
+    const reason =
+      explain(customer).join(", ");
+
+    const rows = strategies(customer)
+      .filter(
+        (item) => item.netValue > 0
+      )
+      .sort(
+        (a, b) =>
+          b.netValue - a.netValue
+      );
+
+    if (!rows.length) {
+      return res.json([]);
+    }
+
+    const created =
+      await Intervention.insertMany(
+        rows.map((item) => ({
+          ...item,
+
+          customer: customer._id,
+
+          reason,
+        }))
+      );
+
+    res.json(created);
+  } catch (error) {
+    console.error(
+      "Recommendation failed:",
+      error
+    );
+
+    res.status(500).json({
+      error:
+        "Failed to recommend interventions",
+    });
+  }
+}
+
+
+// --------------------------------------------------
+// Simulator
+// --------------------------------------------------
+
+export async function simulator(req, res) {
+  try {
+    const customer = await findCustomer(
+      req.params.id
+    );
+
+    if (!customer) {
+      return res.status(404).json({
+        error: "Customer not found",
+      });
+    }
+
+    const cost = Number(
+      req.body.cost || 0
+    );
+
+    const retention = Number(
+      req.body.retention || 0
+    );
+
+    const expectedRevenue =
       customer.monthlyRevenue *
       12 *
+      retention;
+
+    res.json({
+      cost,
+
       retention,
 
-    netValue:
-      customer.monthlyRevenue *
-        12 *
-        retention -
-      cost,
-  });
+      expectedRevenue,
+
+      netValue:
+        expectedRevenue - cost,
+    });
+  } catch (error) {
+    console.error(
+      "Simulation failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Simulation failed",
+    });
+  }
 }
 
 
+// --------------------------------------------------
 // Outcomes
+// --------------------------------------------------
+
 export async function outcomes(req, res) {
-  const result = await Outcome.find()
-    .populate("customer intervention")
-    .sort({ createdAt: -1 });
+  try {
+    const result = await Outcome.find()
+      .populate(
+        "customer intervention"
+      )
+      .sort({
+        createdAt: -1,
+      })
+      .limit(100)
+      .lean();
 
-  res.json(result);
+    res.json(result);
+  } catch (error) {
+    console.error(
+      "Outcomes failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Failed to load outcomes",
+    });
+  }
 }
 
 
+// --------------------------------------------------
 // Analytics
+// --------------------------------------------------
+
 export async function analytics(req, res) {
-  const customers = await Customer.find();
-
-  res.json({
-    revenueAtRisk: customers.reduce(
-      (sum, customer) =>
-        sum + revenueAtRisk(customer),
-      0
-    ),
-
-    byPlan: [
-      "basic",
-      "standard",
-      "premium",
-    ].map((plan) => ({
-      plan,
-
-      count: customers.filter(
-        (customer) =>
-          customer.planType === plan
-      ).length,
-
-      atRisk: customers
-        .filter(
-          (customer) =>
-            customer.planType === plan
+  try {
+    const customers =
+      await Customer.find()
+        .select(
+          "planType monthlyRevenue churnProbability"
         )
-        .reduce(
-          (sum, customer) =>
-            sum + revenueAtRisk(customer),
-          0
-        ),
-    })),
-  });
+        .lean();
+
+    let revenueAtRiskTotal = 0;
+
+    const byPlan = {
+      basic: {
+        count: 0,
+        atRisk: 0,
+      },
+
+      standard: {
+        count: 0,
+        atRisk: 0,
+      },
+
+      premium: {
+        count: 0,
+        atRisk: 0,
+      },
+    };
+
+    for (const customer of customers) {
+      const risk =
+        revenueAtRisk(customer);
+
+      revenueAtRiskTotal += risk;
+
+      if (byPlan[customer.planType]) {
+        byPlan[customer.planType].count++;
+
+        byPlan[customer.planType].atRisk +=
+          risk;
+      }
+    }
+
+    res.json({
+      revenueAtRisk:
+        revenueAtRiskTotal,
+
+      byPlan: [
+        {
+          plan: "basic",
+          ...byPlan.basic,
+        },
+
+        {
+          plan: "standard",
+          ...byPlan.standard,
+        },
+
+        {
+          plan: "premium",
+          ...byPlan.premium,
+        },
+      ],
+    });
+  } catch (error) {
+    console.error(
+      "Analytics failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Failed to load analytics",
+    });
+  }
 }
 
 
+// --------------------------------------------------
 // Audit
-export async function audit(req, res) {
-  const result = await AuditLog.find()
-    .sort({ createdAt: -1 })
-    .limit(200);
+// --------------------------------------------------
 
-  res.json(result);
+export async function audit(req, res) {
+  try {
+    const result =
+      await AuditLog.find()
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+    res.json(result);
+  } catch (error) {
+    console.error(
+      "Audit failed:",
+      error
+    );
+
+    res.status(500).json({
+      error: "Failed to load audit trail",
+    });
+  }
 }

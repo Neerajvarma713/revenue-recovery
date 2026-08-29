@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+import { api } from "../services/api";
 
 export default function Login() {
-  const [email, setEmail] = useState("analyst@demo.local");
+  const [email, setEmail] = useState(
+    "analyst@demo.local"
+  );
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -18,177 +19,80 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/demo`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
+      const data = await api.demo(email);
+
+      localStorage.setItem(
+        "rr_token",
+        data.token
+      );
+
+      navigate("/", {
+        replace: true,
       });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      if (!data.token) {
-        throw new Error("No authentication token received");
-      }
-
-      localStorage.setItem("rr_token", data.token);
-
-      navigate("/", { replace: true });
     } catch (err) {
+      console.error("Login failed:", err);
+
       setError(
-        err.message === "Failed to fetch"
-          ? "Unable to connect to the server. Make sure the backend is running on port 4000."
-          : err.message
+        err.message || "Unable to sign in"
       );
+
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f1eee6",
-        padding: "24px",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "420px",
-          background: "#ffffff",
-          border: "1px solid #d8d5cc",
-          padding: "40px",
-          boxShadow: "0 12px 35px rgba(0, 0, 0, 0.06)",
-        }}
-      >
-        {/* Brand */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "32px",
-          }}
-        >
-          <div
-            style={{
-              width: "42px",
-              height: "42px",
-              background: "#193532",
-              color: "#f1eee6",
-              display: "grid",
-              placeItems: "center",
-              fontSize: "20px",
-              fontFamily: "serif",
-            }}
-          >
+    <div className="min-h-screen paper flex items-center justify-center px-4">
+
+      <div className="w-full max-w-md border line bg-white/60 p-8">
+
+        <div className="flex items-center gap-3 mb-8">
+
+          <div className="w-10 h-10 bg-[#193532] text-[#f1eee6] grid place-items-center serif text-xl">
             R
           </div>
 
           <div>
-            <div
-              style={{
-                fontFamily: "serif",
-                fontSize: "24px",
-                color: "#193532",
-              }}
-            >
-              Recovery
-            </div>
+            <h1 className="serif text-2xl">
+              Revenue Recovery
+            </h1>
 
-            <div
-              style={{
-                fontSize: "9px",
-                letterSpacing: "0.18em",
-                color: "#77766f",
-                marginTop: "3px",
-              }}
-            >
+            <div className="mono text-[9px] muted tracking-[.18em]">
               REVENUE DESK
             </div>
           </div>
+
         </div>
 
-        {/* Heading */}
-        <h1
-          style={{
-            margin: "0 0 8px",
-            fontFamily: "serif",
-            fontSize: "30px",
-            fontWeight: "500",
-            color: "#202421",
-          }}
-        >
-          Sign in
-        </h1>
-
-        <p
-          style={{
-            margin: "0 0 28px",
-            color: "#77766f",
-            fontSize: "14px",
-            lineHeight: "1.6",
-          }}
-        >
-          Sign in to access the revenue recovery dashboard.
+        <p className="muted text-sm mb-7">
+          Sign in to access the recovery dashboard.
         </p>
 
-        {/* Login form */}
-        <form onSubmit={handleLogin}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              fontSize: "12px",
-              fontWeight: "600",
-              color: "#333733",
-            }}
-          >
-            Email
-          </label>
+        <form
+          onSubmit={handleLogin}
+          className="space-y-5"
+        >
 
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="analyst@demo.local"
-            required
-            disabled={loading}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "12px 13px",
-              border: "1px solid #cfcfc7",
-              background: "#faf9f5",
-              color: "#202421",
-              fontSize: "14px",
-              outline: "none",
-              marginBottom: "16px",
-            }}
-          />
+          <div>
+            <label className="block mono text-[10px] muted mb-2">
+              EMAIL
+            </label>
+
+            <input
+              type="email"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              placeholder="analyst@demo.local"
+              required
+              className="w-full bg-white border line px-4 py-3 outline-none text-sm"
+            />
+          </div>
 
           {error && (
-            <div
-              style={{
-                padding: "11px 12px",
-                marginBottom: "16px",
-                background: "#f8e8e5",
-                border: "1px solid #e4c2bd",
-                color: "#8b332a",
-                fontSize: "12px",
-                lineHeight: "1.5",
-              }}
-            >
+            <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -196,34 +100,15 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              padding: "13px",
-              border: "none",
-              background: loading ? "#64736f" : "#193532",
-              color: "#ffffff",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "13px",
-              fontWeight: "600",
-            }}
+            className="w-full bg-[#193532] text-[#f1eee6] py-3 text-sm disabled:opacity-60"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading
+              ? "Signing in..."
+              : "Sign in"}
           </button>
+
         </form>
 
-        {/* Demo information */}
-        <div
-          style={{
-            marginTop: "24px",
-            paddingTop: "18px",
-            borderTop: "1px solid #e0ded7",
-            fontSize: "11px",
-            color: "#77766f",
-            lineHeight: "1.6",
-          }}
-        >
-          Demo access is enabled for this workspace.
-        </div>
       </div>
     </div>
   );

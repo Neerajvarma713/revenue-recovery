@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+
 import {
   LayoutDashboard,
   Users,
@@ -7,22 +8,56 @@ import {
   BarChart3,
   ScrollText,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 const nav = [
-  { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/customers", label: "Customers", icon: Users },
-  { to: "/interventions", label: "Interventions", icon: ArrowLeftRight },
-  { to: "/simulator", label: "What-if lab", icon: FlaskConical },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/audit", label: "Audit trail", icon: ScrollText },
+  {
+    to: "/",
+    label: "Overview",
+    icon: LayoutDashboard,
+  },
+  {
+    to: "/customers",
+    label: "Customers",
+    icon: Users,
+  },
+  {
+    to: "/interventions",
+    label: "Interventions",
+    icon: ArrowLeftRight,
+  },
+  {
+    to: "/simulator",
+    label: "What-if lab",
+    icon: FlaskConical,
+  },
+  {
+    to: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+  },
+  {
+    to: "/audit",
+    label: "Audit trail",
+    icon: ScrollText,
+  },
 ];
 
 export default function Layout() {
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    localStorage.removeItem("rr_token");
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div className="min-h-screen flex paper">
+
       {/* Sidebar */}
       <aside className="w-60 shrink-0 border-r line px-5 py-7 flex flex-col min-h-screen">
+
         {/* Brand */}
         <div className="flex items-center gap-3 mb-12">
           <div className="w-9 h-9 bg-[#193532] text-[#f1eee6] grid place-items-center serif text-lg">
@@ -65,21 +100,39 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Workspace Settings */}
+        {/* Bottom */}
         <div className="mt-auto pt-6">
-          <div className="border-t line pt-4">
+          <div className="border-t line pt-4 space-y-3">
+
             <div className="flex items-center gap-3 muted text-xs">
-              <Settings size={15} strokeWidth={1.8} />
+              <Settings
+                size={15}
+                strokeWidth={1.8}
+              />
               <span>Workspace settings</span>
             </div>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 muted text-xs hover:ink transition-colors"
+            >
+              <LogOut
+                size={15}
+                strokeWidth={1.8}
+              />
+              <span>Sign out</span>
+            </button>
+
           </div>
         </div>
       </aside>
 
       {/* Main */}
       <main className="flex-1 min-w-0 min-h-screen flex flex-col">
+
         {/* Header */}
         <header className="h-16 shrink-0 border-b line flex items-center justify-between px-8">
+
           <div className="mono text-[10px] muted tracking-[.12em]">
             OPERATIONS / CUSTOMER RETENTION
           </div>
@@ -88,14 +141,16 @@ export default function Layout() {
             <span className="w-2 h-2 rounded-full bg-emerald-600" />
             <span>Model service online</span>
           </div>
+
         </header>
 
-        {/* Page Content */}
+        {/* Content */}
         <div className="flex-1 p-8 overflow-auto">
           <div className="max-w-[1400px] mx-auto">
             <Outlet />
           </div>
         </div>
+
       </main>
     </div>
   );

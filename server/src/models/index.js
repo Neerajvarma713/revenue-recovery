@@ -1,95 +1,313 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
-const CustomerSchema = new Schema({
-  externalId: String,
-  name: String,
-  email: String,
-  tenureMonths: Number,
-  monthlyRevenue: Number,
-  supportTickets90d: Number,
-  paymentFailures90d: Number,
-  usageChangePct: Number,
-  nps: Number,
-  planType: String,
-  daysSinceLogin: Number,
-  discountPct: Number,
-  priceIncreasePct: Number,
-  engagementTrendPct: Number,
-  complaintRecencyDays: Number,
-  featureAdoptionPct: Number,
-  competitorPressure: Number,
-  optedOut: {
-    type: Boolean,
-    default: false
-  },
-  churnProbability: Number,
-  riskLevel: String
-}, { timestamps: true });
 
-const InterventionSchema = new Schema({
-  customer: {
-    type: Schema.Types.ObjectId,
-    ref: 'Customer'
-  },
-  strategy: String,
-  cost: Number,
-  expectedRetention: Number,
-  expectedRevenue: Number,
-  netValue: Number,
-  status: {
-    type: String,
-    default: 'RECOMMENDED'
-  },
-  reason: String,
-  approvedBy: String
-}, { timestamps: true });
+// =========================
+// Customer
+// =========================
 
-const OutcomeSchema = new Schema({
-  customer: {
-    type: Schema.Types.ObjectId,
-    ref: 'Customer'
-  },
-  intervention: {
-    type: Schema.Types.ObjectId,
-    ref: 'Intervention'
-  },
-  retained: Boolean,
-  revenueRecovered: Number
-}, { timestamps: true });
+const CustomerSchema = new Schema(
+  {
+    externalId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true,
+    },
 
-const AuditLogSchema = new Schema({
-  actor: String,
-  action: String,
-  entityType: String,
-  entityId: String,
-  metadata: Schema.Types.Mixed
-}, { timestamps: true });
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-const UserSchema = new Schema({
-  email: {
-    type: String,
-    unique: true
+    email: {
+      type: String,
+      trim: true,
+    },
+
+    tenureMonths: {
+      type: Number,
+      default: 0,
+    },
+
+    monthlyRevenue: {
+      type: Number,
+      default: 0,
+    },
+
+    supportTickets90d: {
+      type: Number,
+      default: 0,
+    },
+
+    paymentFailures90d: {
+      type: Number,
+      default: 0,
+    },
+
+    usageChangePct: {
+      type: Number,
+      default: 0,
+    },
+
+    nps: {
+      type: Number,
+      default: 0,
+    },
+
+    planType: {
+      type: String,
+      default: "standard",
+    },
+
+    daysSinceLogin: {
+      type: Number,
+      default: 0,
+    },
+
+    discountPct: {
+      type: Number,
+      default: 0,
+    },
+
+    priceIncreasePct: {
+      type: Number,
+      default: 0,
+    },
+
+    engagementTrendPct: {
+      type: Number,
+      default: 0,
+    },
+
+    complaintRecencyDays: {
+      type: Number,
+      default: 0,
+    },
+
+    featureAdoptionPct: {
+      type: Number,
+      default: 0,
+    },
+
+    competitorPressure: {
+      type: Number,
+      default: 0,
+    },
+
+    optedOut: {
+      type: Boolean,
+      default: false,
+    },
+
+    churnProbability: {
+      type: Number,
+      default: 0,
+    },
+
+    riskLevel: {
+      type: String,
+      default: "LOW",
+    },
   },
-  passwordHash: String,
-  name: String,
-  role: {
-    type: String,
-    default: 'analyst'
+  {
+    timestamps: true,
   }
-});
+);
 
-const Customer = model('Customer', CustomerSchema);
-const Intervention = model('Intervention', InterventionSchema);
-const Outcome = model('Outcome', OutcomeSchema);
-const AuditLog = model('AuditLog', AuditLogSchema);
-const User = model('User', UserSchema);
+
+// =========================
+// Intervention
+// =========================
+
+const InterventionSchema = new Schema(
+  {
+    customer: {
+      type: Schema.Types.ObjectId,
+      ref: "Customer",
+      required: true,
+    },
+
+    strategy: {
+      type: String,
+    },
+
+    cost: {
+      type: Number,
+      default: 0,
+    },
+
+    expectedRetention: {
+      type: Number,
+      default: 0,
+    },
+
+    expectedRevenue: {
+      type: Number,
+      default: 0,
+    },
+
+    netValue: {
+      type: Number,
+      default: 0,
+    },
+
+    status: {
+      type: String,
+      default: "RECOMMENDED",
+    },
+
+    reason: {
+      type: String,
+    },
+
+    approvedBy: {
+      type: String,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+
+// =========================
+// Outcome
+// =========================
+
+const OutcomeSchema = new Schema(
+  {
+    customer: {
+      type: Schema.Types.ObjectId,
+      ref: "Customer",
+      required: true,
+    },
+
+    intervention: {
+      type: Schema.Types.ObjectId,
+      ref: "Intervention",
+    },
+
+    retained: {
+      type: Boolean,
+      default: false,
+    },
+
+    revenueRecovered: {
+      type: Number,
+      default: 0,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+
+// =========================
+// Audit Log
+// =========================
+
+const AuditLogSchema = new Schema(
+  {
+    actor: {
+      type: String,
+      default: "system",
+    },
+
+    action: {
+      type: String,
+      required: true,
+    },
+
+    entityType: {
+      type: String,
+    },
+
+    entityId: {
+      type: String,
+    },
+
+    metadata: {
+      type: Schema.Types.Mixed,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+
+// =========================
+// User
+// =========================
+
+const UserSchema = new Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    passwordHash: {
+      type: String,
+    },
+
+    name: {
+      type: String,
+    },
+
+    role: {
+      type: String,
+      default: "analyst",
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+
+// =========================
+// Models
+// =========================
+
+const Customer = model("Customer", CustomerSchema);
+
+const Intervention = model(
+  "Intervention",
+  InterventionSchema
+);
+
+const Outcome = model(
+  "Outcome",
+  OutcomeSchema
+);
+
+const AuditLog = model(
+  "AuditLog",
+  AuditLogSchema
+);
+
+const User = model(
+  "User",
+  UserSchema
+);
+
+
+// =========================
+// Exports
+// =========================
 
 export {
   Customer,
   Intervention,
   Outcome,
   AuditLog,
-  User
+  User,
 };

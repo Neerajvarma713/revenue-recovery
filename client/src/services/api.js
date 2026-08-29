@@ -1,74 +1,136 @@
 const base =
-  import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:4000/api";
+
 
 async function req(path, options = {}) {
   const token = localStorage.getItem("rr_token");
 
   const response = await fetch(base + path, {
     ...options,
+
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(token
-        ? { Authorization: `Bearer ${token}` }
+      ...(options.body
+        ? {
+            "Content-Type": "application/json",
+          }
         : {}),
+
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+
       ...(options.headers || {}),
     },
+
+    signal: options.signal,
   });
 
-  const data = await response.json().catch(() => ({}));
+  const data = await response
+    .json()
+    .catch(() => ({}));
+
+  if (response.status === 401) {
+    localStorage.removeItem("rr_token");
+
+    if (
+      window.location.pathname !== "/login"
+    ) {
+      window.location.href = "/login";
+    }
+
+    throw new Error("Session expired");
+  }
 
   if (!response.ok) {
     throw new Error(
-      data.error || `Request failed (${response.status})`
+      data.error ||
+        `Request failed (${response.status})`
     );
   }
 
   return data;
 }
 
+
 export const api = {
+
+  // Authentication
   demo: (email) =>
     req("/auth/demo", {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
 
-  dashboard: () => req("/dashboard"),
 
-  customers: (q) =>
+  // Dashboard
+  dashboard: (options = {}) =>
+    req("/dashboard", options),
+
+
+  // Customers
+  customers: (q = "", options = {}) =>
     req(
       "/customers" +
-        (q ? `?q=${encodeURIComponent(q)}` : "")
+        (q
+          ? `?q=${encodeURIComponent(q)}`
+          : ""),
+      options
     ),
 
-  customer: (id) =>
-    req(`/customers/${id}`),
+
+  createCustomer: (body) =>
+    req("/customers", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+
+  customer: (id, options = {}) =>
+    req(`/customers/${id}`, options),
+
 
   score: (id) =>
     req(`/customers/${id}/score`, {
       method: "POST",
     }),
 
-  interventions: () =>
-    req("/interventions"),
+
+  // Interventions
+  interventions: (options = {}) =>
+    req("/interventions", options),
+
 
   recommend: (id) =>
-    req(`/customers/${id}/interventions/recommend`, {
-      method: "POST",
-    }),
+    req(
+      `/customers/${id}/interventions/recommend`,
+      {
+        method: "POST",
+      }
+    ),
 
+
+  // Simulator
   simulate: (id, body) =>
     req(`/customers/${id}/simulate`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
-  analytics: () =>
-    req("/analytics"),
 
-  audit: () =>
-    req("/audit"),
+  // Analytics
+  analytics: (options = {}) =>
+    req("/analytics", options),
 
-  outcomes: () =>
-    req("/outcomes"),
+
+  // Audit
+  audit: (options = {}) =>
+    req("/audit", options),
+
+
+  // Outcomes
+  outcomes: (options = {}) =>
+    req("/outcomes", options),
 };
