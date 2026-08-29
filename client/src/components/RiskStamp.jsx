@@ -1,0 +1,1 @@
+export default function RiskStamp({level='LOW'}){const cls={CRITICAL:'text-red-800',HIGH:'text-orange-800',MEDIUM:'text-amber-700',LOW:'text-emerald-800'}[level]||'text-slate-700';return <span className={`stamp ${cls}`}>{level}</span>}
