@@ -5,6 +5,7 @@ const base =
 
 async function req(path, options = {}) {
   const token = localStorage.getItem("rr_token");
+  const isAuthRequest = path.startsWith("/auth/");
 
   const response = await fetch(base + path, {
     ...options,
@@ -16,7 +17,7 @@ async function req(path, options = {}) {
           }
         : {}),
 
-      ...(token
+      ...(token && !isAuthRequest
         ? {
             Authorization: `Bearer ${token}`,
           }
@@ -33,6 +34,12 @@ async function req(path, options = {}) {
     .catch(() => ({}));
 
   if (response.status === 401) {
+    if (isAuthRequest) {
+      throw new Error(
+        data.error || "Invalid email or password"
+      );
+    }
+
     localStorage.removeItem("rr_token");
 
     if (
@@ -62,6 +69,16 @@ export const api = {
     req("/auth/demo", {
       method: "POST",
       body: JSON.stringify({ email }),
+    }),
+  login: (body) =>
+    req("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  signup: (body) =>
+    req("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 
 

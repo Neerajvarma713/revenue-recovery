@@ -3,6 +3,12 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  Activity,
+  CircleDollarSign,
+  UserPlus,
+  X,
+} from "lucide-react";
 
 import { api } from "../services/api";
 import RiskStamp from "../components/RiskStamp";
@@ -408,7 +414,10 @@ export default function Customers() {
       {showAdd && (
 
         <div
-          className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 bg-[#102b28]/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-customer-title"
           onMouseDown={(e) => {
             if (
               e.target === e.currentTarget &&
@@ -419,18 +428,25 @@ export default function Customers() {
           }}
         >
 
-          <div className="bg-[#f1eee6] border line w-full max-w-3xl max-h-[90vh] overflow-auto p-7">
+          <div className="bg-[#f1eee6] border line w-full max-w-3xl max-h-[92vh] overflow-auto shadow-soft">
 
-            <div className="flex items-center justify-between mb-7">
-
-              <div>
-                <div className="mono text-[10px] muted tracking-widest">
-                  CUSTOMER RECORD
+            <div className="px-5 py-5 sm:px-8 sm:py-6 border-b line flex items-start justify-between gap-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 shrink-0 bg-[#dfe5db] ink grid place-items-center">
+                  <UserPlus size={19} strokeWidth={1.8} />
                 </div>
 
-                <h2 className="serif text-3xl mt-1">
-                  Add customer
-                </h2>
+                <div>
+                  <div className="mono text-[10px] muted tracking-widest">
+                    CUSTOMER RECORD / NEW
+                  </div>
+                  <h2 id="add-customer-title" className="serif text-3xl mt-1">
+                    Add customer
+                  </h2>
+                  <p className="text-sm muted mt-1">
+                    Add account details to begin retention monitoring.
+                  </p>
+                </div>
               </div>
 
               <button
@@ -439,9 +455,10 @@ export default function Customers() {
                 onClick={() =>
                   setShowAdd(false)
                 }
-                className="text-2xl muted"
+                aria-label="Close add customer form"
+                className="p-2 -mr-2 -mt-2 muted hover:ink transition-colors"
               >
-                ×
+                <X size={20} strokeWidth={1.8} />
               </button>
 
             </div>
@@ -449,214 +466,109 @@ export default function Customers() {
 
             <form
               onSubmit={handleCreate}
-              className="grid grid-cols-2 gap-5"
+              className="p-5 sm:p-8"
             >
+              <section className="form-section">
+                <div className="form-section-heading">
+                  <div>
+                    <h3 className="form-section-title">Account details</h3>
+                    <p className="form-section-help">Identify the customer and choose their current plan.</p>
+                  </div>
+                  <span className="form-step">01</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label" htmlFor="customer-external-id">External ID <span>*</span></label>
+                    <input id="customer-external-id" name="externalId" value={form.externalId} onChange={updateField} required placeholder="e.g. CUST-02300" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-name">Name <span>*</span></label>
+                    <input id="customer-name" name="name" value={form.name} onChange={updateField} required placeholder="Customer name" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-plan">Plan</label>
+                    <select id="customer-plan" name="planType" value={form.planType} onChange={updateField} className="field-input">
+                      <option value="basic">Basic</option>
+                      <option value="standard">Standard</option>
+                      <option value="premium">Premium</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-tenure">Tenure <span className="field-suffix">months</span></label>
+                    <input id="customer-tenure" type="number" name="tenureMonths" value={form.tenureMonths} onChange={updateField} min="0" placeholder="0" className="field-input" />
+                  </div>
+                </div>
+              </section>
 
-              <div>
-                <label className="field-label">
-                  External ID
-                </label>
+              <section className="form-section">
+                <div className="form-section-heading">
+                  <div className="flex items-center gap-2">
+                    <CircleDollarSign size={17} className="amber" strokeWidth={1.8} />
+                    <div>
+                      <h3 className="form-section-title">Commercial profile</h3>
+                      <p className="form-section-help">Use the latest account value and discount information.</p>
+                    </div>
+                  </div>
+                  <span className="form-step">02</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label" htmlFor="customer-revenue">Monthly revenue <span className="field-suffix">USD</span></label>
+                    <input id="customer-revenue" type="number" name="monthlyRevenue" value={form.monthlyRevenue} onChange={updateField} min="0" placeholder="0" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-discount">Discount <span className="field-suffix">%</span></label>
+                    <input id="customer-discount" type="number" name="discountPct" value={form.discountPct} onChange={updateField} min="0" max="100" placeholder="0" className="field-input" />
+                  </div>
+                </div>
+              </section>
 
-                <input
-                  name="externalId"
-                  value={form.externalId}
-                  onChange={updateField}
-                  required
-                  placeholder="Customer 02300"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Name
-                </label>
-
-                <input
-                  name="name"
-                  value={form.name}
-                  onChange={updateField}
-                  required
-                  placeholder="Customer name"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Plan
-                </label>
-
-                <select
-                  name="planType"
-                  value={form.planType}
-                  onChange={updateField}
-                  className="field-input"
-                >
-                  <option value="basic">
-                    Basic
-                  </option>
-
-                  <option value="standard">
-                    Standard
-                  </option>
-
-                  <option value="premium">
-                    Premium
-                  </option>
-                </select>
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Monthly Revenue
-                </label>
-
-                <input
-                  type="number"
-                  name="monthlyRevenue"
-                  value={form.monthlyRevenue}
-                  onChange={updateField}
-                  min="0"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Tenure Months
-                </label>
-
-                <input
-                  type="number"
-                  name="tenureMonths"
-                  value={form.tenureMonths}
-                  onChange={updateField}
-                  min="0"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Support Tickets (90d)
-                </label>
-
-                <input
-                  type="number"
-                  name="supportTickets90d"
-                  value={
-                    form.supportTickets90d
-                  }
-                  onChange={updateField}
-                  min="0"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Payment Failures (90d)
-                </label>
-
-                <input
-                  type="number"
-                  name="paymentFailures90d"
-                  value={
-                    form.paymentFailures90d
-                  }
-                  onChange={updateField}
-                  min="0"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Usage Change %
-                </label>
-
-                <input
-                  type="number"
-                  name="usageChangePct"
-                  value={
-                    form.usageChangePct
-                  }
-                  onChange={updateField}
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  NPS
-                </label>
-
-                <input
-                  type="number"
-                  name="nps"
-                  value={form.nps}
-                  onChange={updateField}
-                  min="-100"
-                  max="100"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Days Since Login
-                </label>
-
-                <input
-                  type="number"
-                  name="daysSinceLogin"
-                  value={
-                    form.daysSinceLogin
-                  }
-                  onChange={updateField}
-                  min="0"
-                  className="field-input"
-                />
-              </div>
-
-
-              <div>
-                <label className="field-label">
-                  Discount %
-                </label>
-
-                <input
-                  type="number"
-                  name="discountPct"
-                  value={form.discountPct}
-                  onChange={updateField}
-                  min="0"
-                  max="100"
-                  className="field-input"
-                />
-              </div>
+              <section className="form-section">
+                <div className="form-section-heading">
+                  <div className="flex items-center gap-2">
+                    <Activity size={17} className="amber" strokeWidth={1.8} />
+                    <div>
+                      <h3 className="form-section-title">Engagement signals</h3>
+                      <p className="form-section-help">These signals help calculate the initial churn-risk score.</p>
+                    </div>
+                  </div>
+                  <span className="form-step">03</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label" htmlFor="customer-tickets">Support tickets <span className="field-suffix">last 90d</span></label>
+                    <input id="customer-tickets" type="number" name="supportTickets90d" value={form.supportTickets90d} onChange={updateField} min="0" placeholder="0" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-failures">Payment failures <span className="field-suffix">last 90d</span></label>
+                    <input id="customer-failures" type="number" name="paymentFailures90d" value={form.paymentFailures90d} onChange={updateField} min="0" placeholder="0" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-usage">Usage change <span className="field-suffix">%</span></label>
+                    <input id="customer-usage" type="number" name="usageChangePct" value={form.usageChangePct} onChange={updateField} placeholder="e.g. -12" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-nps">NPS <span className="field-suffix">-100 to 100</span></label>
+                    <input id="customer-nps" type="number" name="nps" value={form.nps} onChange={updateField} min="-100" max="100" placeholder="0" className="field-input" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="customer-login">Days since login</label>
+                    <input id="customer-login" type="number" name="daysSinceLogin" value={form.daysSinceLogin} onChange={updateField} min="0" placeholder="0" className="field-input" />
+                  </div>
+                </div>
+              </section>
 
 
               {/* Error */}
               {formError && (
-                <div className="col-span-2 border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <div className="border border-red-200 bg-red-50 p-3 text-sm text-red-700 mb-5" role="alert">
                   {formError}
                 </div>
               )}
 
 
               {/* Buttons */}
-              <div className="col-span-2 flex justify-end gap-3 pt-3 border-t line">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-5 border-t line">
 
                 <button
                   type="button"
@@ -664,7 +576,7 @@ export default function Customers() {
                   onClick={() =>
                     setShowAdd(false)
                   }
-                  className="px-5 py-3 text-sm border line"
+                  className="px-5 py-3 text-sm border line hover:bg-[#e5e8df] transition-colors"
                 >
                   Cancel
                 </button>
@@ -672,7 +584,7 @@ export default function Customers() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-3 text-sm bg-[#193532] text-[#f1eee6] disabled:opacity-60"
+                  className="px-5 py-3 text-sm bg-[#193532] text-[#f1eee6] disabled:opacity-60 hover:bg-[#28504a] transition-colors"
                 >
                   {saving
                     ? "Creating..."

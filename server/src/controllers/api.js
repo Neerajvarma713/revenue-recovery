@@ -13,17 +13,32 @@ import {
 
 import { predict } from "../services/ml.js";
 
+function customerScope(userId) {
+  return userId
+    ? {
+        $or: [
+          { owner: userId },
+          { owner: { $exists: false } },
+          { owner: null },
+        ],
+      }
+    : {};
+}
+
 
 // --------------------------------------------------
 // Find customer by externalId OR MongoDB _id
 // --------------------------------------------------
 
-async function findCustomer(id) {
+async function findCustomer(id, owner) {
   if (!id) return null;
+
+  const scope = customerScope(owner);
 
   // Most of your UI uses externalId such as:
   // Customer 02297
   const byExternalId = await Customer.findOne({
+    ...scope,
     externalId: id,
   });
 
@@ -33,7 +48,10 @@ async function findCustomer(id) {
 
   // Only query MongoDB _id when it is valid
   if (/^[0-9a-fA-F]{24}$/.test(id)) {
-    return Customer.findById(id);
+    return Customer.findOne({
+      ...scope,
+      _id: id,
+    });
   }
 
   return null;
@@ -46,7 +64,9 @@ async function findCustomer(id) {
 
 export async function dashboard(req, res) {
   try {
-    const customers = await Customer.find()
+    const customers = await Customer.find(
+      customerScope(req.user?.userId)
+    )
       .select(
         "externalId name planType monthlyRevenue churnProbability riskLevel"
       )
@@ -132,14 +152,17 @@ export async function customers(req, res) {
   try {
     const q = req.query.q?.trim() || "";
 
-    const filter = q
-      ? {
+    const filter = {
+      ...customerScope(req.user?.userId),
+      ...(q
+        ? {
           name: {
             $regex: q,
             $options: "i",
           },
         }
-      : {};
+        : {}),
+    };
 
     const result = await Customer.find(filter)
       .select(
@@ -205,6 +228,7 @@ export async function createCustomer(req, res) {
 
     // Create customer
     const customer = await Customer.create({
+      ...(req.user?.userId ? { owner: req.user.userId } : {}),
       externalId: cleanExternalId,
 
       name: cleanName,
@@ -293,7 +317,8 @@ export async function createCustomer(req, res) {
 export async function customer(req, res) {
   try {
     const customer = await findCustomer(
-      req.params.id
+      req.params.id,
+      req.user?.userId
     );
 
     if (!customer) {
@@ -330,7 +355,8 @@ export async function customer(req, res) {
 export async function score(req, res) {
   try {
     const customer = await findCustomer(
-      req.params.id
+      req.params.id,
+      req.user?.userId
     );
 
     if (!customer) {
@@ -417,7 +443,8 @@ export async function interventions(req, res) {
 export async function recommend(req, res) {
   try {
     const customer = await findCustomer(
-      req.params.id
+      req.params.id,
+      req.user?.userId
     );
 
     if (!customer) {
@@ -475,7 +502,8 @@ export async function recommend(req, res) {
 export async function simulator(req, res) {
   try {
     const customer = await findCustomer(
-      req.params.id
+      req.params.id,
+      req.user?.userId
     );
 
     if (!customer) {
@@ -558,6 +586,7 @@ export async function analytics(req, res) {
   try {
     const customers =
       await Customer.find()
+        .where(customerScope(req.user?.userId))
         .select(
           "planType monthlyRevenue churnProbability"
         )

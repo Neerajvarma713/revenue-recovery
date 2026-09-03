@@ -9,6 +9,12 @@ const { Schema, model } = mongoose;
 
 const CustomerSchema = new Schema(
   {
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+
     externalId: {
       type: String,
       required: true,
