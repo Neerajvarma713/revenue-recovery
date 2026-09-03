@@ -4,7 +4,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 
-import { connectDb } from "./config/db.js";
+import { connectDb, databaseStatus } from "./config/db.js";
 import { auth } from "./middleware/auth.js";
 import { User } from "./models/index.js";
 import * as api from "./controllers/api.js";
@@ -32,8 +32,14 @@ app.use(express.json());
 // =========================
 
 app.get("/health", (req, res) => {
+  const database = databaseStatus();
+
   res.json({
-    status: "ok",
+    status: database === "connected" ? "ok" : "degraded",
+    database: {
+      type: "mongodb",
+      status: database,
+    },
   });
 });
 
