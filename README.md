@@ -1,73 +1,156 @@
 # Revenue Recovery Desk
 
-A full-stack churn-risk and revenue-recovery prototype for customer-success/finance operations. It combines a FastAPI ML service, Node/Express API, MongoDB persistence, and a React dashboard.
+A full-stack customer churn-risk and revenue-recovery platform designed to help customer-success and finance teams identify customers at risk of churn, understand the factors behind that risk, and simulate retention strategies.
 
-## Architecture
+## 🚀 Live Demo
 
-- `ml-service/` — Python/FastAPI prediction service and reproducible demo dataset/training pipeline.
-- `server/` — Node.js/Express API, Mongoose models, risk math, intervention engine, authentication and audit trail.
-- `client/` — React/Vite/Tailwind operations console with an intentionally restrained ledger/auditor visual language.
+**Frontend:**  
+[Open Revenue Recovery Desk](YOUR_VERCEL_URL)
 
-## Prerequisites
+**Backend API:**  
+https://revenue-recovery-1-kg4m.onrender.com
 
-- Node.js 20+
-- Python 3.10+
-- MongoDB 7+ running locally or a MongoDB Atlas URI
+**ML Service:**  
+https://revenue-recovery-ml.onrender.com
 
-## 1. ML service
+> Replace `YOUR_VERCEL_URL` with your actual Vercel deployment URL.
 
-```bash
-cd ml-service
-python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-python app/generate_dataset.py
-python train.py
-uvicorn app.main:app --reload --port 8000
-```
+---
 
-Health check: `http://127.0.0.1:8000/health`
+## 📌 Overview
 
-## 2. API
+Revenue Recovery Desk combines customer analytics, machine-learning-based churn prediction, and retention simulations into a single dashboard.
 
-```bash
-cd server
-npm install
-copy .env.example .env
-# edit .env if your MongoDB is not local
-npm run seed
-npm run dev
-```
+The platform allows users to:
 
-API: `http://localhost:4000/health`
+- Authenticate securely
+- View and search customers
+- Analyze customer churn risk
+- Identify high-risk customers
+- View customer-level risk factors
+- Generate retention recommendations
+- Simulate retention offers
+- Create and manage customer interventions
+- Track intervention outcomes
+- Analyze revenue and churn trends
 
-## 3. Client
+The application uses a React frontend, Node.js/Express backend, MongoDB Atlas for persistent data, and a separate Python FastAPI machine-learning service.
 
-```bash
-cd client
-npm install
-npm run dev
-```
+---
 
-Open the Vite URL shown in the terminal, normally `http://localhost:5173`.
+## ✨ Features
 
-The client obtains a demo JWT automatically through `/api/auth/demo`; this is intentionally a development convenience, not production authentication.
+### 🔐 Authentication
 
-## Decision logic
+- JWT-based authentication
+- Protected application routes
+- Secure API authorization
+- Login and logout functionality
 
-Revenue at risk = monthly revenue × 12 × churn probability.
+### 👥 Customer Management
 
-The intervention engine estimates expected retained revenue and subtracts intervention cost. Recommendations are only created when the estimated net value is positive.
+- View customer records
+- Search customers
+- View customer details
+- Add new customers
+- Track customer revenue and subscription information
+- Monitor customer engagement and support activity
 
-The ML service exposes a deterministic prediction endpoint for local/offline demonstration. The training script also produces a real Logistic Regression artifact and evaluation metrics from the generated dataset.
+### 🤖 Churn Risk Prediction
 
-## Production hardening still required
+The machine-learning service evaluates customer information and produces a churn probability.
 
-- Replace demo authentication with password/SSO authentication.
-- Store secrets outside `.env` in a secret manager.
-- Add rate limiting, request validation and structured logging.
-- Add role-based approval controls for high-CLV interventions.
-- Add explicit consent/opt-out enforcement at every action boundary.
-- Put ML behind authenticated internal service networking.
-- Add unit/integration/e2e test suites and CI.
+Risk levels are categorized as:
+
+- **LOW**
+- **MEDIUM**
+- **HIGH**
+- **CRITICAL**
+
+The prediction considers customer attributes such as:
+
+- Tenure
+- Monthly revenue
+- Support tickets
+- Payment failures
+- Usage changes
+- NPS
+- Plan type
+- Login activity
+- Discounts
+- Price increases
+- Engagement trends
+- Complaint recency
+- Feature adoption
+- Competitor pressure
+- Opt-out status
+
+### 📊 Analytics
+
+The dashboard provides insights into:
+
+- Customer risk distribution
+- Revenue at risk
+- Churn trends
+- Customer segments
+- Retention opportunities
+- Intervention outcomes
+
+### 💡 Retention Recommendations
+
+The system can recommend retention strategies based on customer risk and expected value.
+
+Recommendations can include:
+
+- Discounts
+- Plan adjustments
+- Customer-success outreach
+- Feature education
+- Other retention interventions
+
+Each strategy can be evaluated using expected retention and revenue impact.
+
+### 🧪 Retention Simulator
+
+Users can simulate different retention offers and compare their expected financial impact before applying an intervention.
+
+### 🎯 Intervention Management
+
+Users can create and track interventions for customers, including:
+
+- Retention strategy
+- Cost
+- Expected retention
+- Expected revenue
+- Net value
+- Intervention status
+- Outcome
+
+---
+
+## 🏗️ System Architecture
+
+```text
+                         ┌──────────────────────┐
+                         │      React Client    │
+                         │   Vite + Tailwind    │
+                         └──────────┬───────────┘
+                                    │
+                              REST API / JWT
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │   Node.js + Express  │
+                         │      Backend API      │
+                         └───────┬────────┬─────┘
+                                 │        │
+                      MongoDB    │        │ ML Requests
+                                 │        │
+                                 ▼        ▼
+                    ┌──────────────┐   ┌─────────────────┐
+                    │ MongoDB      │   │ Python FastAPI  │
+                    │ Atlas        │   │ ML Service      │
+                    └──────────────┘   └─────────────────┘
+                                           │
+                                           ▼
+                                    Scikit-learn Model
