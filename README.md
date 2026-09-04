@@ -5,7 +5,7 @@ A full-stack customer churn-risk and revenue-recovery platform designed to help 
 ## 🚀 Live Demo
 
 **Frontend:**  
-[Open Revenue Recovery Desk](YOUR_VERCEL_URL)
+https://revenue-recovery-rho.vercel.app
 
 **Backend API:**  
 https://revenue-recovery-1-kg4m.onrender.com
